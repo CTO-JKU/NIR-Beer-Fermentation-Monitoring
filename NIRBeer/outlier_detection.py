@@ -1,12 +1,11 @@
 import numpy as np
-import pandas as pd
 import polars as pl
 from dataclasses import dataclass
-from typing import Tuple, Optional
+from typing import Optional
 from sklearn.decomposition import PCA
 from scipy.stats import f as f_dist
 from scipy.stats import norm
-from chemotools.scatter import RobustNormalVariate, StandardNormalVariate
+from chemotools.scatter import StandardNormalVariate
 
 
 @dataclass
