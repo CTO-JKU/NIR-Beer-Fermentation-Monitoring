@@ -2,6 +2,109 @@ import matplotlib.pyplot as plt
 import polars as pl
 import numpy as np
 from typing import Any, List
+from matplotlib.colors import Normalize
+import matplotlib.cm as cm
+import numpy as np
+import polars as pl
+from typing import List, Optional, Any
+from chemotools.feature_selection import RangeCut
+from sklearn.pipeline import Pipeline
+
+
+def plot_spectra_by_batch(
+    df: pl.DataFrame,
+    wavelengths: np.ndarray,
+    batch_names: Optional[List[str]] = None,
+    n_cols: int = 3,
+    preprocessing: Optional[Pipeline] = None,
+    cmap_name: str = 'viridis',
+    output_filename: Optional[str] = None
+) -> None:
+    """
+    Plots NIR spectra for different batches from a Polars DataFrame, with spectra colored by time.
+
+    Args:
+        df (pl.DataFrame): DataFrame containing the spectral data. Must include columns
+                           'BatchName', 'CumulativeTime', and spectral columns (e.g., 'WL_...').
+        batch_names (List[str]): A list of titles for each batch plot. Must match the
+                                 number of unique batches.
+        wavelengths (np.ndarray): Array of the full wavelength values for the x-axis before cutting.
+        n_cols (int, optional): Number of columns in the subplot grid. Defaults to 3.
+        preprocessing (Any, optional): A preprocessing transformer with a .fit_transform() method.
+                                       If None, no preprocessing is applied. Defaults to None.
+        cmap_name (str, optional): Name of the Matplotlib colormap. Defaults to 'viridis'.
+        output_filename (Optional[str], optional): If provided, the plot is saved to this
+                                                   file path. Defaults to None.
+    """
+    # --- 1. Data and Plot Setup ---
+    # Get unique sorted batch identifiers from the dataframe
+    batches = df["BatchName"].unique().sort().to_list()
+    n_batches = len(batches)
+
+    if n_batches != len(batch_names):
+        raise ValueError("The length of `batch_names` must match the number of unique batches in the DataFrame.")
+
+    # Create subplot grid
+    n_rows = int(np.ceil(n_batches / n_cols))
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 4 * n_rows), sharex=True, sharey=True)
+    axes = np.array(axes).flatten() # Flatten for easy iteration
+
+    # Get colormap
+    cmap = cm.get_cmap(cmap_name)
+
+    # **Crucially, normalize color based on the min/max time across the ENTIRE dataset**
+    # This ensures a consistent color scale for all subplots.
+    all_time_values = df.select(pl.col("CumulativeTime")).to_numpy().flatten()
+    norm = Normalize(vmin=all_time_values.min(), vmax=all_time_values.max())
+
+    if preprocessing is not None:
+        for _, step in preprocessing.steps:
+            if isinstance(step, RangeCut):
+                wavelengths = wavelengths[step.start:step.end]
+                break
+
+    # --- 3. Plotting Loop ---
+    for i, batch in enumerate(batches):
+        ax = axes[i]
+        
+        # Filter data for the current batch
+        batch_data = df.filter(pl.col("BatchName") == batch)
+        spectra = batch_data.select(pl.col("^WL.*$")).to_numpy()
+        time_values = batch_data.select(pl.col("CumulativeTime")).to_numpy().flatten()
+        
+        # Apply the range cut to the spectra
+        spectra_cut = preprocessing.fit_transform(spectra)
+        
+        # Plot each spectrum with its corresponding color based on time
+        for j, spectrum in enumerate(spectra_cut):
+            color = cmap(norm(time_values[j]))
+            ax.plot(wavelengths, spectrum, color=color, alpha=0.2)
+        
+        ax.set_title(batch_names[i])
+        ax.set_xlabel("Wavelength / nm")
+        ax.set_ylabel("Absorbance / AU")
+    
+    # Hide any unused subplots
+    for i in range(n_batches, len(axes)):
+        axes[i].set_visible(False)
+
+    # --- 4. Final Touches (Colorbar and Layout) ---
+    # Add a single, horizontal colorbar for the entire figure
+    cbar_ax = fig.add_axes([0.15, 0.06, 0.7, 0.02])  # [left, bottom, width, height]
+    sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+    cbar = fig.colorbar(sm, cax=cbar_ax, orientation='horizontal')
+    cbar.set_label('Time / h')
+
+    # Adjust layout to prevent overlap and make space for the colorbar
+    plt.tight_layout(rect=[0, 0.08, 1, 1])
+
+    # Save the figure if a filename is provided
+    if output_filename:
+        plt.savefig(output_filename, dpi=600, bbox_inches='tight')
+    
+    plt.show()
+
+
 
 def plot_model_performance(
     model: Any,
