@@ -3,6 +3,7 @@ import polars as pl
 from dataclasses import dataclass
 from typing import Optional
 from sklearn.decomposition import PCA
+from sklearn.pipeline import Pipeline
 from scipy.stats import f as f_dist
 from scipy.stats import norm
 from chemotools.scatter import StandardNormalVariate
@@ -45,7 +46,7 @@ def detect_outliers(
     df_nir: pl.DataFrame, 
     alpha: float = 0.01, 
     var_threshold: float = 0.99,
-    range_cut: Optional[object] = None
+    preprocessing: Optional[Pipeline] = None
 ) -> OutlierResults:
     """
     Detect outliers in NIR spectra data using PCA-based Hotelling's T2 and Q-residuals.
@@ -71,8 +72,8 @@ def detect_outliers(
     X = df_nir.select(wavelength_cols).to_numpy()
     
     # Apply RangeCut if provided
-    if range_cut is not None:
-        X = range_cut.fit_transform(X)
+    if preprocessing is not None:
+        X = preprocessing.fit_transform(X)
     
     # Apply Robust Normal Variate preprocessing
     rnv = StandardNormalVariate()
