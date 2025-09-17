@@ -1,6 +1,6 @@
 from typing import Optional, Union
 from sklearn.metrics import r2_score, mean_squared_error
-from sklearn.model_selection import GridSearchCV, LeaveOneGroupOut,
+from sklearn.model_selection import GridSearchCV, LeaveOneGroupOut
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 import joblib

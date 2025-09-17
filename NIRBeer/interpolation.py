@@ -21,8 +21,8 @@ def interpolate_targets_to_spectra(
         yEt = df_tgt["wtPercEtOH"].to_numpy()
 
         # Build PCHIP interpolators
-        fE = PchipInterpolator(t_tgt, yE)
-        fEt = PchipInterpolator(t_tgt, yEt)
+        fE = PchipInterpolator(t_tgt, yE, extrapolate=False)
+        fEt = PchipInterpolator(t_tgt, yEt, extrapolate=False)
         dE = fE.derivative()
         dEt = fEt.derivative()
 
