@@ -40,7 +40,7 @@ class VIPSelector(BaseEstimator, TransformerMixin):
         self.n_components_pls = n_components_pls
         self.vip_threshold = vip_threshold
         self.mask_ = None
-        self.vip_scores_ = None
+        self.vip_scores = None
 
     def fit(self, X, y):
         # Fit an internal PLS model to calculate VIP scores
@@ -48,8 +48,8 @@ class VIPSelector(BaseEstimator, TransformerMixin):
         internal_pls.fit(X, y)
 
         # Calculate VIP scores and create the selection mask
-        self.vip_scores_ = _calculate_vip_scores(internal_pls)
-        self.mask_ = self.vip_scores_ >= self.vip_threshold
+        self.vip_scores = _calculate_vip_scores(internal_pls)
+        self.mask_ = self.vip_scores  >= self.vip_threshold
         
         # Check if any features were selected
         if not np.any(self.mask_):
