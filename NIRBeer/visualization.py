@@ -117,8 +117,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import warnings
 
-def plot_detected_outliers(t2, q, inliers_mask, t2_limit, q_limit,
-                                    fig_size=(8.0, 6.0), output_filename: Optional[str] = None, dpi=300):
+def plot_detected_outliers(t2,
+                           q,
+                           inliers_mask, 
+                           t2_limit, 
+                           q_limit,
+                           output_filename: Optional[str] = None, 
+                           dpi=300):
     """
     Generates an advanced scatter plot of Hotelling's T^2 vs. Q residuals.
 
@@ -149,7 +154,7 @@ def plot_detected_outliers(t2, q, inliers_mask, t2_limit, q_limit,
     inliers_mask_plot = inliers_mask[positive_mask]
 
     # --- Plot Setup ---
-    fig, ax = plt.subplots(figsize=fig_size)
+    fig, ax = plt.subplots(figsize=(7, 5))
     
     inliers = inliers_mask_plot
     outliers = ~inliers_mask_plot

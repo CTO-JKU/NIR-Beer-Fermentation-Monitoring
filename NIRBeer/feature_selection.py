@@ -15,21 +15,13 @@ def _calculate_vip_scores(pls_model):
     w = pls_model.x_weights_     # W weights (n_features, n_components)
     q = pls_model.y_loadings_    # Q loadings (n_targets, n_components)
 
-    p, h = w.shape  # p: number of features, h: number of components
+    p, h = w.shape  # p: number of features
 
-    # Sum of squares of explained variance for each component
-    ssy = np.diag(t.T @ t @ q.T @ q).reshape(h, -1)
+    ssy = ssy = (t ** 2).sum(axis=0) * (q ** 2).sum(axis=0)  # Sum of squares explained by each component
     ssy_total = np.sum(ssy)
 
-    vips = np.zeros((p,))
-    for i in range(p):
-        # Weight of the i-th variable for each component
-        weight = np.array([(w[i, j] / np.linalg.norm(w[:, j]))**2 for j in range(h)])
-        
-        # Corrected calculation: Use np.dot on 1D arrays to ensure a scalar result
-        vips[i] = np.sqrt(p * np.dot(ssy.flatten(), weight) / ssy_total)
-
-    return vips
+    vip = np.sqrt(p * (w**2 @ ssy) / ssy_total)
+    return vip.flatten()
 
 class VIPSelector(BaseEstimator, TransformerMixin):
     """
@@ -55,6 +47,8 @@ class VIPSelector(BaseEstimator, TransformerMixin):
         if not np.any(self.mask_):
             print(f"Warning: No features selected with VIP threshold {self.vip_threshold}. Keeping all features.")
             self.mask_ = np.ones(X.shape[1], dtype=bool)
+
+        print(f"Selected {np.sum(self.mask_)} features out of {X.shape[1]} with VIP threshold {self.vip_threshold}.")
 
         return self
 

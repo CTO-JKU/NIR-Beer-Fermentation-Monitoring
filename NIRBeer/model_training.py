@@ -19,7 +19,11 @@ def train_and_evaluate(
     feature_selector: str = "^WL.*$",
     target_cols: list[str] = ["Ereal_interp", "wtPercEtOH_interp"],
     group_col: str = "BatchName",
-    target_names: list[str] = ['Real Extract', 'Ethanol']
+    target_names: list[str] = [r'$E_{\text{real}}$', r'$w_{\text{EtOH}}$'],
+    true_batch_names: Optional[dict] = None,
+    plot_output_filename: Optional[str] = None,
+    col_spacing: float = 0.2,
+    row_spacing: float = 0.35
 ) -> list[dict]:
     """
     Trains, evaluates, and plots models based on specified holdout groups.
@@ -37,7 +41,13 @@ def train_and_evaluate(
                                                GridSearchCV is skipped. Defaults to None.
         feature_selector (str), target_cols (list), group_col (str), target_names (list):
                                                Configuration for data selection and naming.
-
+        true_batch_names (Optional[dict], optional): A dictionary mapping batch names from the
+                                                     dataset to more descriptive names for plot titles.
+                                                     Defaults to None.
+        plot_output_filename (Optional[str], optional): If provided, saves the generated plots to this file.
+                                                        Defaults to None.
+        col_spacing (float, optional): Spacing between columns in the plot. Defaults to 0.2.
+        row_spacing (float, optional): Spacing between rows in the plot. Defaults to 0.3.
     Returns:
         list[dict]: A list containing result dictionaries for each model trained.
     """
@@ -45,7 +55,8 @@ def train_and_evaluate(
     holdout_groups = [holdout_batch] if isinstance(holdout_batch, str) else holdout_batch
     n_rows = len(holdout_groups) if separate_models else 1
     
-    _, axes = plt.subplots(n_rows, 2, figsize=(12, 5.5 * n_rows), squeeze=False)
+    fig, axes = plt.subplots(n_rows, 2, figsize=((10, 4.5 * n_rows)), squeeze=False)
+    fig.subplots_adjust(wspace=col_spacing, hspace=row_spacing, top=0.95, bottom=0.12)
     all_results = []
 
     # 2. Define the core training and evaluation logic as a nested function
@@ -89,6 +100,9 @@ def train_and_evaluate(
         y_pred_holdout = best_model.predict(X_holdout)
         metrics = {}
         
+        # Get the display name for the plot title, falling back to the original model_id
+        plot_title_id = true_batch_names.get(model_id, model_id) if true_batch_names else model_id
+
         for i, name in enumerate(target_names):
             mse = mean_squared_error(y_true_holdout[:, i], y_pred_holdout[:, i])
             r2 = r2_score(y_true_holdout[:, i], y_pred_holdout[:, i])
@@ -97,11 +111,12 @@ def train_and_evaluate(
             print(f"Holdout MSE for {name}: {mse:.4f}, $R^2$: {r2:.4f}")
             
             ax = plot_axes_row[i]
-            ax.scatter(y_true_holdout[:, i], y_pred_holdout[:, i], alpha=0.7, edgecolors='k', label='Predictions')
+            ax.scatter(y_true_holdout[:, i], y_pred_holdout[:, i], alpha=0.7, color='cornflowerblue', edgecolors='blue', label='Predictions')
             lims = [ax.get_xlim(), ax.get_ylim()]
             lims = [np.min(lims), np.max(lims)]
-            ax.plot(lims, lims, 'r--', alpha=0.75, zorder=0, label='Parity Line')
-            ax.set_title(f"Holdout: {model_id} - {name}", fontsize=12)
+            ax.plot(lims, lims, '--', color='crimson', alpha=0.75, zorder=0, label='Parity Line')
+            # Use the retrieved display name for the plot title
+            ax.set_title(f"Holdout: {plot_title_id} - {name}", fontsize=12)
             ax.set_xlabel('True Values'); ax.set_ylabel('Predicted Values')
             ax.grid(True, linestyle='--', alpha=0.6); ax.legend()
             ax.set_aspect('equal', adjustable='box')
@@ -120,6 +135,9 @@ def train_and_evaluate(
         result = _run_training(holdout_set=holdout_groups, plot_axes_row=axes[0], model_id=model_id)
         all_results.append(result)
 
-    plt.tight_layout()
+    if plot_output_filename:
+        plt.savefig(plot_output_filename, dpi=300, bbox_inches='tight')
+        print(f"Plot saved to '{plot_output_filename}'")
+
     plt.show()
     return all_results
